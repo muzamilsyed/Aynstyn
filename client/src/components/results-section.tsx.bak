@@ -1,0 +1,1456 @@
+import { useEffect, useRef, useState } from "react";
+import type { AssessmentResult } from "@/pages/assessment";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  CheckCircle,
+  PlusCircle,
+  Brain,
+  ArrowRight,
+  Clock,
+  Calendar,
+  BookOpen,
+  ChevronRight,
+  FileDown,
+  Save,
+  Share2,
+  Download,
+  Play,
+  Youtube,
+  Video,
+} from "lucide-react";
+import DynamicTimeline from "@/components/dynamic-timeline";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import html2pdf from "html2pdf.js";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface ResultsSectionProps {
+  result: AssessmentResult;
+}
+
+export default function ResultsSection({ result }: ResultsSectionProps) {
+  const circleRef = useRef<SVGCircleElement>(null);
+  const resultSectionRef = useRef<HTMLDivElement>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<"pdf" | "json">("pdf");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Animate progress ring
+    if (circleRef.current) {
+      const radius = circleRef.current.r.baseVal.value;
+      const circumference = radius * 2 * Math.PI;
+
+      circleRef.current.style.strokeDasharray = `${circumference} ${circumference}`;
+      circleRef.current.style.strokeDashoffset = `${circumference}`;
+
+      // Trigger animation
+      setTimeout(() => {
+        if (circleRef.current) {
+          const offset = circumference - (result.score / 100) * circumference;
+          circleRef.current.style.strokeDashoffset = `${offset}`;
+        }
+      }, 200);
+    }
+  }, [result.score]);
+
+  const handleSaveAssessment = async () => {
+    try {
+      setIsSaving(true);
+
+      // Create filename based on subject
+      const fileName = `${result.subject.replace(/\s+/g, "_")}_Assessment_${new Date().toISOString().split("T")[0]}`;
+
+      if (exportFormat === "json") {
+        // For JSON format, create a downloadable JSON file
+        const content = JSON.stringify(result, null, 2);
+        const blob = new Blob([content], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${fileName}.json`;
+        document.body.appendChild(link);
+        link.click();
+
+        // Clean up
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 100);
+
+        toast({
+          title: "Assessment Saved",
+          description: `Your assessment has been downloaded as JSON`,
+        });
+      } else {
+        // For PDF format, use direct HTML2PDF approach with the actual reference
+        if (!resultSectionRef.current) {
+          throw new Error("Could not find assessment content");
+        }
+
+        // Simple options that work reliably
+        const options = {
+          margin: 15,
+          filename: `${fileName}.pdf`,
+          image: { type: "jpeg", quality: 0.95 },
+          html2canvas: { scale: 1 },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        };
+
+        // Generate PDF from the ref element which is definitely an HTMLElement
+        await html2pdf(resultSectionRef.current, options);
+
+        toast({
+          title: "Assessment Saved",
+          description: `Your assessment has been downloaded as PDF`,
+        });
+      }
+
+      setExportDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving assessment:", error);
+      toast({
+        title: "Error",
+        description: `Failed to save assessment: ${error instanceof Error ? error.message : "Unknown error"}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="bg-white rounded-xl shadow-sm p-6 mb-8 assessment-container"
+      ref={resultSectionRef}
+    >
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Knowledge Assessment: {result.subject}
+        </h2>
+        <p className="text-gray-600">
+          Here's an analysis of your understanding based on the information you
+          provided.
+        </p>
+      </div>
+
+      {/* Score Overview */}
+      <div className="flex flex-col md:flex-row mb-8 gap-6">
+        {/* Circular Score Display */}
+        <div className="flex-1 bg-gray-50 rounded-xl p-6 flex flex-col items-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Your Overall Score
+          </h3>
+          <div className="relative w-48 h-48 mb-4">
+            <svg
+              className="w-48 h-48"
+              style={{ transform: "rotate(-90deg)" }}
+              viewBox="0 0 160 160"
+            >
+              <circle
+                className="text-gray-200"
+                stroke="currentColor"
+                strokeWidth="12"
+                fill="transparent"
+                r="70"
+                cx="80"
+                cy="80"
+              />
+              <circle
+                ref={circleRef}
+                className="text-primary-500"
+                stroke="currentColor"
+                strokeWidth="12"
+                fill="transparent"
+                r="70"
+                cx="80"
+                cy="80"
+                style={{
+                  transition: "stroke-dashoffset 1s ease-in-out",
+                }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-5xl font-bold text-gray-900">
+                {Math.round(result.score)}
+              </span>
+              <span className="text-sm text-gray-500">out of 100</span>
+            </div>
+          </div>
+          <p className="text-center text-sm text-gray-600 mb-2">
+            {result.score >= 90
+              ? "Excellent understanding across most key topics."
+              : result.score >= 70
+                ? "Good understanding of basic concepts with some gaps in advanced topics."
+                : result.score >= 50
+                  ? "Basic understanding with significant knowledge gaps."
+                  : "Introductory understanding with many concepts to explore."}
+          </p>
+
+          <div className="text-center text-xs text-gray-500 border-t border-gray-200 pt-3 mt-3 px-4">
+            <p className="font-medium mb-1">How we calculate your score:</p>
+            <p>
+              We analyze the depth and accuracy of your explanation, evaluating
+              how many key topics you covered and the precision of your
+              understanding.
+              <br />
+              <br />
+              Our algorithms weighs topic coverage (60%), factual accuracy
+              (25%), and depth of insight (15%) to determine your final score
+              out of 100.
+            </p>
+          </div>
+        </div>
+
+        {/* Topic Coverage */}
+        <div className="flex-1 bg-gray-50 rounded-xl p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Topic Coverage
+            </h3>
+            <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
+              Higher % = Better coverage
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-600 mb-4">
+            These percentages reflect how thoroughly you covered key concepts in
+            each topic area of {result.subject}.
+          </p>
+
+          {/* Topic bars */}
+          <div className="space-y-5">
+            {result.topicCoverage.map((topic, index) => {
+              // Ensure percentage is a valid number
+              const validPercentage = Number.isFinite(topic.percentage)
+                ? topic.percentage
+                : 0;
+
+              // Determine color and message based on percentage
+              const getColorClass = (percentage: number) => {
+                if (percentage >= 70) return "bg-green-600";
+                if (percentage >= 40) return "bg-blue-500";
+                return "bg-amber-500";
+              };
+
+              const getMessage = (percentage: number) => {
+                if (percentage >= 70) return "Strong understanding";
+                if (percentage >= 40) return "Partial understanding";
+                return "Needs attention";
+              };
+
+              return (
+                <div
+                  key={index}
+                  className="border border-gray-100 rounded-lg p-3"
+                >
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      {topic.name}
+                    </span>
+                    <div className="flex items-center">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full mr-2 ${
+                          validPercentage >= 70
+                            ? "bg-green-100 text-green-700"
+                            : validPercentage >= 40
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {getMessage(validPercentage)}
+                      </span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {Math.round(validPercentage)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2 overflow-hidden">
+                    <div
+                      className={`${getColorClass(validPercentage)} h-2.5 ${validPercentage === 100 ? "rounded-full" : "rounded-l-full"} shadow-sm`}
+                      style={{
+                        width: `${validPercentage}%`,
+                        transition: "width 1s ease-in-out",
+                        maxWidth: "100%",
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="text-xs text-gray-500 mt-4 pt-3 border-t border-gray-200">
+            <p className="font-medium mb-1">What does this mean?</p>
+            <p>
+              Topic Coverage shows how well you addressed important concepts
+              within each subject area. Areas with lower percentages represent
+              opportunities to deepen your knowledge.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Analysis */}
+      <div className="mb-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">
+          Topics You Covered
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {result.coveredTopics.map((topic, index) => (
+            <div
+              key={index}
+              className="bg-green-50 border border-green-200 rounded-lg p-4 transition-all hover:shadow-md"
+            >
+              <div className="flex items-start">
+                <div className="flex-shrink-0 bg-green-100 rounded-full p-1">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="ml-3 flex-1">
+                  <h4 className="text-base font-medium text-gray-900">
+                    {topic.name}
+                  </h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {topic.description}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <a
+                      href={`https://en.wikipedia.org/wiki/${encodeURIComponent(topic.name)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm px-3 py-1.5 bg-green-100 text-green-700 rounded-full flex items-center hover:bg-green-200"
+                    >
+                      <ArrowRight className="h-4 w-4 mr-1.5" />
+                      Learn More
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">
+          Topics to Explore
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {result.missingTopics.map((topic, index) => (
+            <div
+              key={index}
+              className="bg-gray-50 border border-gray-200 rounded-lg p-5 transition-all hover:shadow-md"
+            >
+              <div className="flex items-start mb-3">
+                <div className="flex-shrink-0 bg-gray-100 rounded-full p-1">
+                  <PlusCircle className="h-5 w-5 text-gray-600" />
+                </div>
+                <div className="ml-3 flex-1">
+                  <h4 className="text-base font-medium text-gray-900">
+                    {topic.name}
+                  </h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {topic.description}
+                  </p>
+                </div>
+              </div>
+
+              {topic.overview && (
+                <div className="mb-4 mt-2 px-2">
+                  <p className="text-sm text-gray-700">{topic.overview}</p>
+                </div>
+              )}
+
+              {topic.keyPoints && topic.keyPoints.length > 0 && (
+                <div className="mt-3">
+                  <h5 className="text-sm font-medium text-gray-800 mb-2 px-2">
+                    Key Points to Explore:
+                  </h5>
+                  <ul className="space-y-2">
+                    {topic.keyPoints.map((point, pointIndex) => (
+                      <li key={pointIndex} className="flex items-start">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-100 flex items-center justify-center mt-0.5 mr-2">
+                          <span className="text-primary-700 text-xs font-bold">
+                            {pointIndex + 1}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-700">{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Additional resource links */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                <a
+                  href={`https://en.wikipedia.org/wiki/${encodeURIComponent(topic.name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full flex items-center hover:bg-gray-200"
+                >
+                  <ArrowRight className="h-4 w-4 mr-1.5" />
+                  Wikipedia
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Historical Timeline */}
+      <div className="mb-8">
+        <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <Clock className="mr-2 h-5 w-5 text-primary-600" />
+          Historical Timeline: {result.subject}
+        </h3>
+
+        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50 overflow-x-auto">
+          <div className="min-w-max">
+            <div className="relative">
+              {/* Horizontal connecting line */}
+              <div className="absolute top-7 left-0 right-0 h-0.5 bg-gray-300"></div>
+
+              <DynamicTimeline subject={result.subject} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Estimated timeline - now below the Roadmap */}
+      <div className="mb-6 bg-primary-50 rounded-lg p-4 border border-primary-100">
+        <h4 className="text-base font-medium text-primary-800 mb-2 flex items-center">
+          <Clock className="h-4 w-4 mr-2 text-primary-600" />
+          Estimated Timeline to Mastery
+        </h4>
+        <p className="text-sm text-gray-700">
+          Based on your current understanding, we estimate it would take
+          approximately{" "}
+          <span className="font-semibold">
+            {result.score >= 80
+              ? "2-4 weeks"
+              : result.score >= 60
+                ? "4-8 weeks"
+                : result.score >= 40
+                  ? "2-3 months"
+                  : "3-6 months"}
+          </span>{" "}
+          of dedicated study to achieve mastery in {result.subject}, focusing on
+          the topics identified in this assessment.
+        </p>
+        
+        <p className="text-sm font-medium mt-3 text-black">
+          All the Best!
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Dynamic Timeline component that fetches and displays subject-specific timelines
+function DynamicTimeline({ subject }: { subject: string }) {
+  const [dynamicTimeline, setDynamicTimeline] = useState<Array<{year: string, title: string, description: string}>>([]);
+  const [isLoadingTimeline, setIsLoadingTimeline] = useState(true);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
+  
+  // Add debugging for visibility
+  console.log("Timeline subject:", subject);
+  
+  // Fetch the dynamic timeline from our API
+  useEffect(() => {
+    if (!subject) return;
+    
+    setIsLoadingTimeline(true);
+    setTimelineError(null);
+    
+    fetch(`/api/timeline/${encodeURIComponent(subject)}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Timeline request failed with status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("Dynamic timeline data:", data);
+        if (data.timeline && Array.isArray(data.timeline)) {
+          setDynamicTimeline(data.timeline);
+        } else {
+          setTimelineError("Invalid timeline data received");
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching timeline:", err);
+        setTimelineError(`Failed to load timeline: ${err.message}`);
+      })
+      .finally(() => {
+        setIsLoadingTimeline(false);
+      });
+  }, [subject]);
+  
+  // Show loading state while timeline is being generated
+  if (isLoadingTimeline) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mb-3"></div>
+          <p className="text-sm text-gray-600">Generating timeline for {subject}...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Display the dynamic timeline when loaded
+  if (dynamicTimeline && dynamicTimeline.length > 0) {
+    console.log("Displaying dynamic timeline:", dynamicTimeline);
+    
+    // Colors for the timeline nodes
+    const colors = [
+      "bg-amber-600", // First event
+      "bg-blue-600",  // Second event
+      "bg-green-600", // Third event
+      "bg-purple-600", // Fourth event
+      "bg-red-600",   // Fifth event
+      "bg-gray-800"   // Sixth/last event
+    ];
+    
+    return (
+      <div className="relative">
+        {/* Horizontal connecting line */}
+        <div className="absolute top-7 left-0 right-0 h-0.5 bg-gray-300"></div>
+        
+        <div className="flex justify-between">
+          {dynamicTimeline.map((event, index) => (
+            <div key={index} className="flex flex-col items-center text-center px-4 min-w-[130px]">
+              <div className="font-semibold text-xs text-gray-500 mb-2">
+                {event.year}
+              </div>
+              <div className={`w-5 h-5 rounded-full ${colors[index % colors.length]} z-10 mb-2 shadow-sm`}></div>
+              <h4 className="text-sm font-medium">
+                {event.title}
+              </h4>
+              <p className="text-xs text-gray-600">
+                {event.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
+  // Show fallback timeline if there was an error
+  if (timelineError) {
+    console.log("Showing fallback timeline due to error:", timelineError);
+    return (
+      <div className="relative">
+        {/* Horizontal connecting line */}
+        <div className="absolute top-7 left-0 right-0 h-0.5 bg-gray-300"></div>
+        
+        <div className="flex justify-between">
+          <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+            <div className="font-semibold text-xs text-gray-500 mb-2">
+              Pre-1900s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">
+                          Early Foundations
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          Initial concepts and theories
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1900-1950
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Early Development</h4>
+                        <p className="text-xs text-gray-600">
+                          Fundamental discoveries
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1950-1970
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Expansion</h4>
+                        <p className="text-xs text-gray-600">
+                          Broadening applications
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1970-1990
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Technological Advances</h4>
+                        <p className="text-xs text-gray-600">
+                          Research breakthroughs
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1990-2010
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Digital Revolution</h4>
+                        <p className="text-xs text-gray-600">
+                          Internet and global connectivity
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Present
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Current State</h4>
+                        <p className="text-xs text-gray-600">
+                          Modern applications and research
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else if (subjectName === "Cryptocurrency" || subjectName === "Blockchain") {
+                  console.log("Showing Cryptocurrency/Blockchain timeline");
+                  return (
+                    <div className="flex justify-between">
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1982-1991
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Early Concepts</h4>
+                        <p className="text-xs text-gray-600">
+                          eCash, DigiCash
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          2008
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Bitcoin Whitepaper</h4>
+                        <p className="text-xs text-gray-600">
+                          Satoshi Nakamoto
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          2009-2013
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Bitcoin Launch</h4>
+                        <p className="text-xs text-gray-600">
+                          First transactions, exchanges
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          2015
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Ethereum</h4>
+                        <p className="text-xs text-gray-600">
+                          Smart contracts, dApps
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          2017-2018
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">ICO Boom</h4>
+                        <p className="text-xs text-gray-600">
+                          Market expansion, regulations
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Present
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Web3 & DeFi</h4>
+                        <p className="text-xs text-gray-600">
+                          Decentralized finance, NFTs
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else if (subjectName === "Physics") {
+                  return (
+                    <div className="flex justify-between">
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          300 BCE
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">
+                          Aristotelian Physics
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          Natural place, four elements
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1600s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">
+                          Classical Mechanics
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          Newton's laws, gravitation
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1800s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">
+                          Electromagnetism
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          Maxwell's equations
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Early 1900s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Relativity</h4>
+                        <p className="text-xs text-gray-600">
+                          Special and general relativity
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1920s-30s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">
+                          Quantum Mechanics
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          Wave-particle duality
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Present
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Modern Physics</h4>
+                        <p className="text-xs text-gray-600">
+                          String theory, quantum field theory
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else if (result.subject === "Psychology") {
+                  return (
+                    <div className="flex justify-between">
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1870s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Structuralism</h4>
+                        <p className="text-xs text-gray-600">
+                          Wundt, Titchener
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1900s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Psychoanalysis</h4>
+                        <p className="text-xs text-gray-600">
+                          Freud, Jung, Adler
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1920s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Behaviorism</h4>
+                        <p className="text-xs text-gray-600">Watson, Skinner</p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1950s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Humanistic</h4>
+                        <p className="text-xs text-gray-600">Maslow, Rogers</p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1970s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Cognitive</h4>
+                        <p className="text-xs text-gray-600">
+                          Memory, attention models
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Present
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Neuroscience</h4>
+                        <p className="text-xs text-gray-600">
+                          Brain imaging, genetics
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else if (result.subject === "Biology") {
+                  return (
+                    <div className="flex justify-between">
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1600s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Microscopy</h4>
+                        <p className="text-xs text-gray-600">
+                          van Leeuwenhoek, Hooke
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1859
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Evolution</h4>
+                        <p className="text-xs text-gray-600">
+                          Darwin, natural selection
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1860s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Genetics</h4>
+                        <p className="text-xs text-gray-600">
+                          Mendel, inheritance
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1953
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">DNA Structure</h4>
+                        <p className="text-xs text-gray-600">
+                          Watson, Crick, Franklin
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1990s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Genomics</h4>
+                        <p className="text-xs text-gray-600">
+                          Human Genome Project
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Present
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">CRISPR</h4>
+                        <p className="text-xs text-gray-600">
+                          Gene editing, therapy
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else if (result.subject === "Economy") {
+                  return (
+                    <div className="flex justify-between">
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1700s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Classical</h4>
+                        <p className="text-xs text-gray-600">Smith, Ricardo</p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1800s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Marxism</h4>
+                        <p className="text-xs text-gray-600">
+                          Labor theory of value
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1930s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Keynesian</h4>
+                        <p className="text-xs text-gray-600">
+                          Fiscal policy, demand
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1970s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Monetarism</h4>
+                        <p className="text-xs text-gray-600">
+                          Friedman, money supply
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1980s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Neoliberalism</h4>
+                        <p className="text-xs text-gray-600">
+                          Free markets, deregulation
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Present
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Behavioral</h4>
+                        <p className="text-xs text-gray-600">
+                          Psychology of decisions
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else if (result.subject === "Cryptocurrency" || result.subject === "Blockchain") {
+                  return (
+                    <div className="flex justify-between">
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1982-1991
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Early Concepts</h4>
+                        <p className="text-xs text-gray-600">
+                          eCash, DigiCash
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          2008
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Bitcoin Whitepaper</h4>
+                        <p className="text-xs text-gray-600">
+                          Satoshi Nakamoto
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          2009-2013
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Bitcoin Launch</h4>
+                        <p className="text-xs text-gray-600">
+                          First transactions, exchanges
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          2015
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Ethereum</h4>
+                        <p className="text-xs text-gray-600">
+                          Smart contracts, dApps
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          2017-2018
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">ICO Boom</h4>
+                        <p className="text-xs text-gray-600">
+                          Market expansion, regulations
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Present
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Web3 & DeFi</h4>
+                        <p className="text-xs text-gray-600">
+                          Decentralized finance, NFTs
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else if (result.subject === "History") {
+                  // History specific timeline
+                  return (
+                    <div className="flex justify-between">
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          3000 BCE
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">
+                          Ancient Civilizations
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          Mesopotamia, Egypt, Indus Valley
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          500 BCE
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">
+                          Classical Period
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          Greece, Rome, Han Dynasty
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          500 CE
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Medieval Period</h4>
+                        <p className="text-xs text-gray-600">
+                          Byzantium, Islamic Golden Age
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1500 CE
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Early Modern</h4>
+                        <p className="text-xs text-gray-600">
+                          Renaissance, Exploration, Reformation
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1800 CE
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Modern Era</h4>
+                        <p className="text-xs text-gray-600">
+                          Industrial Revolution, Imperialism
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1900 CE
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Contemporary</h4>
+                        <p className="text-xs text-gray-600">
+                          World Wars, Globalization
+                        </p>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // Generic timeline for custom subjects
+                  return (
+                    <div className="flex justify-between">
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Pre-1900s
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-amber-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">
+                          Early Foundations
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          Initial concepts and theories
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1900-1950
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-blue-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Early Development</h4>
+                        <p className="text-xs text-gray-600">
+                          Fundamental discoveries
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1950-1970
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-green-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Expansion</h4>
+                        <p className="text-xs text-gray-600">
+                          Broadening applications
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1970-1990
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-purple-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Technological Advances</h4>
+                        <p className="text-xs text-gray-600">
+                          Research breakthroughs
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          1990-2010
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-red-600 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Digital Revolution</h4>
+                        <p className="text-xs text-gray-600">
+                          Internet and global connectivity
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col items-center text-center px-4 min-w-[130px]">
+                        <div className="font-semibold text-xs text-gray-500 mb-2">
+                          Present
+                        </div>
+                        <div className="w-5 h-5 rounded-full bg-gray-800 z-10 mb-2 shadow-sm"></div>
+                        <h4 className="text-sm font-medium">Current State</h4>
+                        <p className="text-xs text-gray-600">
+                          Modern applications and research
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Feedback */}
+      <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-6">
+        <div className="flex items-start">
+          <div className="flex-shrink-0 bg-primary-100 rounded-full p-2">
+            <Brain className="h-6 w-6 text-primary-600" />
+          </div>
+          <div className="ml-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              AI Assessment
+            </h3>
+
+            {/* Original feedback display */}
+            <div className="text-gray-700 mb-6 space-y-3">
+              {result.feedback.split("\n\n").map((paragraph, idx) => (
+                <p key={idx} className="text-gray-700">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Roadmap to Achieve Mastery - Separate container */}
+      <div className="mb-6 bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl border border-primary-100 p-5">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5 text-primary-600 mr-2"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4l2 2" />
+            <path d="M17.4 14a4 4 0 1 0-5.8 5.8" />
+            <path d="M12 18v4" />
+          </svg>
+          Roadmap to Achieve Mastery
+        </h3>
+
+        <div className="space-y-4">
+          <div className="relative pl-8">
+            <div className="absolute left-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary-100">
+              <span className="text-sm font-bold text-primary-700">1</span>
+            </div>
+            <div>
+              <h4 className="text-base font-medium text-gray-900">
+                Build your foundation
+              </h4>
+              <p className="text-sm text-gray-600">
+                Focus on understanding the topics you missed, especially the key
+                concepts identified in this assessment. Aim to achieve at least
+                70% proficiency in all topic areas.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative pl-8">
+            <div className="absolute left-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary-100">
+              <span className="text-sm font-bold text-primary-700">2</span>
+            </div>
+            <div>
+              <h4 className="text-base font-medium text-gray-900">
+                Deepen your knowledge
+              </h4>
+              <p className="text-sm text-gray-600">
+                Once you've built a solid foundation, explore more complex
+                scenarios and relationships between concepts. Apply what you've
+                learned to real-world problems.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative pl-8">
+            <div className="absolute left-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary-100">
+              <span className="text-sm font-bold text-primary-700">3</span>
+            </div>
+            <div>
+              <h4 className="text-base font-medium text-gray-900">
+                Engage in practice
+              </h4>
+              <p className="text-sm text-gray-600">
+                Regular application of concepts through practice problems,
+                projects, and discussions will solidify your understanding. Try
+                teaching these concepts to others to identify gaps in your
+                knowledge.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative pl-8">
+            <div className="absolute left-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary-100">
+              <span className="text-sm font-bold text-primary-700">4</span>
+            </div>
+            <div>
+              <h4 className="text-base font-medium text-gray-900">
+                Achieve mastery
+              </h4>
+              <p className="text-sm text-gray-600">
+                Complete mastery comes from being able to integrate all concepts
+                within {result.subject}, think critically about complex
+                problems, and apply your knowledge in novel situations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Estimated timeline - now below the Roadmap */}
+      <div className="mb-6 bg-primary-50 rounded-lg p-4 border border-primary-100">
+        <h4 className="text-base font-medium text-primary-800 mb-2 flex items-center">
+          <Clock className="h-4 w-4 mr-2 text-primary-600" />
+          Estimated Timeline to Mastery
+        </h4>
+        <p className="text-sm text-gray-700">
+          Based on your current understanding, we estimate it would take
+          approximately{" "}
+          <span className="font-semibold">
+            {result.score >= 80
+              ? "2-4 weeks"
+              : result.score >= 60
+                ? "4-8 weeks"
+                : result.score >= 40
+                  ? "2-3 months"
+                  : "3-6 months"}
+          </span>{" "}
+          of dedicated study to achieve mastery in {result.subject}, focusing on
+          the topics identified in this assessment.
+        </p>
+        
+        <p className="text-sm font-medium mt-3 text-black">
+          All the Best!
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="mt-4">
+        <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              className="bg-black hover:bg-gray-800 text-white border border-gray-300"
+              onClick={() => setExportDialogOpen(true)}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              Save Assessment
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Save Your Assessment</DialogTitle>
+              <DialogDescription>
+                Download your {result.subject} assessment as a PDF file
+              </DialogDescription>
+            </DialogHeader>
+            <div className="my-4">
+              <div className="grid gap-4">
+                <div>
+                  <label
+                    htmlFor="exportFormat"
+                    className="text-sm text-gray-700 block mb-1"
+                  >
+                    Format
+                  </label>
+                  <Select
+                    defaultValue={exportFormat}
+                    onValueChange={(value) =>
+                      setExportFormat(value as "pdf" | "json")
+                    }
+                  >
+                    <SelectTrigger className="w-full border-gray-300 focus:ring-black focus:border-black">
+                      <SelectValue placeholder="Select format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pdf">PDF Document</SelectItem>
+                      <SelectItem value="json">JSON Data</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="p-3 border border-gray-100 rounded-lg bg-gray-50">
+                  <h4 className="text-sm font-medium text-blue-700 mb-1">
+                    Assessment Details
+                  </h4>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <dt className="text-gray-500">Subject:</dt>
+                    <dd className="font-medium">{result.subject}</dd>
+                    <dt className="text-gray-500">Score:</dt>
+                    <dd className="font-medium">
+                      {Math.round(result.score)}/100
+                    </dd>
+                    <dt className="text-gray-500">Topics covered:</dt>
+                    <dd className="font-medium">
+                      {result.coveredTopics.length}
+                    </dd>
+                    <dt className="text-gray-500">Date:</dt>
+                    <dd className="font-medium">
+                      {new Date().toLocaleDateString()}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+
+              <DialogFooter className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setExportDialogOpen(false)}
+                  className="border-gray-300 text-black hover:bg-gray-100"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveAssessment}
+                  disabled={isSaving}
+                  className="bg-black hover:bg-gray-800 text-white"
+                >
+                  {isSaving ? (
+                    <>Generating PDF...</>
+                  ) : (
+                    <>
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Download {exportFormat === "pdf" ? "PDF" : "JSON"}
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Button
+          variant="outline"
+          className="ml-3 border-black text-black hover:bg-gray-100"
+        >
+          <Share2 className="mr-2 h-4 w-4" />
+          Share Results
+        </Button>
+      </div>
+    </div>
+  );
+}

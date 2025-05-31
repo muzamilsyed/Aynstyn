@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Simple circular design with clean edges -->
+  <circle cx="16" cy="16" r="16" fill="#ffffff"/>
+  <circle cx="16" cy="16" r="14" fill="#000000"/>
+  
+  <!-- Simplified graduation cap centered in circle -->
+  <g transform="scale(0.24) translate(34, 40)">
+    <!-- Top of cap -->
+    <path d="M32 8L4 24L32 40L60 24L32 8Z" fill="white"/>
+    <!-- Bottom of cap -->
+    <path d="M15 24V40C15 45 32 50 49 40V24L32 32L15 24Z" fill="white"/>
+    <!-- Tassel -->
+    <path d="M50 24V42L53 45V24L50 24Z" fill="white"/>
+  </g>
+</svg>

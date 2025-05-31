@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Graph Test Page</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #222;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            background: #f9f9f9;
+        }
+        .card h2 {
+            margin-top: 0;
+            color: #444;
+        }
+        .image-preview {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        .image-preview img {
+            max-width: 100%;
+            display: block;
+        }
+        .meta-info {
+            background: #eee;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin-top: 1rem;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Open Graph Meta Tags Test</h1>
+    
+    <div class="card">
+        <h2>Facebook/Open Graph Image</h2>
+        <p>Testing if the Facebook/Open Graph image is correctly loaded and rendered:</p>
+        
+        <div class="image-preview">
+            <img src="/images/social/og-facebook.png" alt="Facebook/Open Graph Image" 
+                 onerror="this.parentNode.innerHTML = '<p class=\'error\'>❌ Error: Image failed to load</p>'">
+        </div>
+        
+        <div class="meta-info">
+&lt;meta property="og:image" content="/images/social/og-facebook.png"&gt;
+&lt;meta property="og:image:width" content="1200"&gt;
+&lt;meta property="og:image:height" content="630"&gt;
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Twitter Card Image</h2>
+        <p>Testing if the Twitter card image is correctly loaded and rendered:</p>
+        
+        <div class="image-preview">
+            <img src="/images/social/twitter-card.png" alt="Twitter Card Image"
+                 onerror="this.parentNode.innerHTML = '<p class=\'error\'>❌ Error: Image failed to load</p>'">
+        </div>
+        
+        <div class="meta-info">
+&lt;meta property="twitter:card" content="summary_large_image"&gt;
+&lt;meta property="twitter:image" content="/images/social/twitter-card.png"&gt;
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>LinkedIn Image</h2>
+        <p>Testing if the LinkedIn image is correctly loaded and rendered:</p>
+        
+        <div class="image-preview">
+            <img src="/images/social/linkedin-card.png" alt="LinkedIn Card Image"
+                 onerror="this.parentNode.innerHTML = '<p class=\'error\'>❌ Error: Image failed to load</p>'">
+        </div>
+    </div>
+    
+    <h2>Social Media Debugging Tools</h2>
+    <p>Use these tools to validate your Open Graph implementation:</p>
+    <ul>
+        <li><a href="https://developers.facebook.com/tools/debug/" target="_blank">Facebook Sharing Debugger</a></li>
+        <li><a href="https://cards-dev.twitter.com/validator" target="_blank">Twitter Card Validator</a></li>
+        <li><a href="https://www.linkedin.com/post-inspector/" target="_blank">LinkedIn Post Inspector</a></li>
+    </ul>
+    
+    <script>
+        // Add success messages for images that load properly
+        document.addEventListener('DOMContentLoaded', () => {
+            const images = document.querySelectorAll('.image-preview img');
+            images.forEach(img => {
+                img.addEventListener('load', () => {
+                    const successMsg = document.createElement('p');
+                    successMsg.className = 'success';
+                    successMsg.textContent = '✓ Image loaded successfully';
+                    img.parentNode.appendChild(successMsg);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+What’s Not Working
+No network request reaches backend
+
+No "Response status" log
+
+Loading state is stuck indefinitely
+
+No hasError, no hasData – indicates fetch promise is neither resolving nor rejecting
+
+🔍 Root Cause Possibilities & Fixes
+🧱 1. Fetch Promise Is Hanging (Not Resolving)
+Symptoms:
+
+You see "QUERY FUNCTION EXECUTING" but nothing afterward
+
+No error, no response
+
+Likely Causes:
+
+Missing await or incorrect async handling in your query function
+
+fetch() not returning or being awaited properly
+
+Internal .then() chain never resolving or rejecting
+
+Fix:
+Make sure your query function is fully async, and you’re properly awaiting the fetch:
+
+ts
+Copy
+Edit
+const fetchAssessment = async ({ queryKey }) => {
+  console.log("=== QUERY FUNCTION EXECUTING ===");
+  const [_, id] = queryKey;
+
+  const res = await fetch(`/api/assessment/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  console.log("Response status:", res.status);
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch assessment");
+  }
+
+  return res.json();
+};
+⚠️ 2. React Query Not Refetching After Cache Bust
+If you see "QUERY FUNCTION EXECUTING" once but not on retry, the cache might be returning a Promise that never resolves again.
+
+Fixes:
+
+Add a unique key per session/load or add refetchOnMount: true:
+
+ts
+Copy
+Edit
+useQuery(['assessment', id], fetchAssessment, {
+  enabled: !!id,
+  refetchOnMount: true,
+  staleTime: 0,
+});
+Or explicitly refetch on page load:
+
+ts
+Copy
+Edit
+useEffect(() => {
+  if (query.isIdle || query.isError) {
+    query.refetch();
+  }
+}, []);
+🔒 3. CORS or Backend Hanging (Timeout)
+The request might start but never complete due to:
+
+Backend function stuck on DB call or logic
+
+CORS misconfiguration causing silent failure
+
+Fix:
+
+Check if the route /api/assessment/:id has any asynchronous DB call that might not resolve (e.g., Prisma, Mongoose)
+
+Add try/catch to backend and log start/finish of the endpoint:
+
+ts
+Copy
+Edit
+app.get('/api/assessment/:id', async (req, res) => {
+  console.log("Request received for ID", req.params.id);
+  try {
+    const data = await getAssessmentFromDB(req.params.id);
+    console.log("Sending response");
+    res.json(data);
+  } catch (err) {
+    console.error("Error in assessment API", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+🧠 4. Client-Side Parsing Error / Silent Exception
+If the response body is malformed (e.g., not JSON), .json() will throw and React Query will stay stuck unless caught.
+
+Fix:
+Wrap .json() call:
+
+ts
+Copy
+Edit
+let res;
+try {
+  res = await fetch(...);
+} catch (e) {
+  console.error("Fetch error", e);
+  throw e;
+}
+
+try {
+  const json = await res.json();
+  return json;
+} catch (e) {
+  console.error("Failed to parse response JSON", e);
+  throw new Error("Invalid response from server");
+}
+✅ Final Debugging Checklist
+Check	Action
+✅ fetch is awaited	Confirm await fetch() and await res.json()
+✅ API endpoint logs	Add logs at request start and before response
+✅ React Query is not stuck	Set refetchOnMount: true, disable cache temporarily
+✅ Server returns res.ok	Confirm backend is not silently failing
+✅ Add fallback UI	Show "Loading..." and timeout if stuck for > 10s
+
+Optional: Add Timeout Safety
+ts
+Copy
+Edit
+const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), ms));
+
+const fetchWithTimeout = async (url, options = {}) => {
+  return Promise.race([
+    fetch(url, options),
+    timeout(10000),
+  ]);
+};
+🚀 What to Do Next
+✅ Confirm query function is async and all await calls are correct
+
+✅ Log response status, and body parsing
+
+✅ Temporarily disable cache or set staleTime: 0
+
+✅ Add logs to backend /api/assessment/:id route
+
+✅ Look at DevTools → Network to verify if any request is sent
+
+Would you like me to review your useQuery or query client setup for any silent blockers? Feel free to paste the function here.

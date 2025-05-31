@@ -1,0 +1,56 @@
+# Dependency and build directories
+node_modules/
+dist/
+build/
+.next/
+.out/
+.temp/
+.cache/
+
+# Environment & config files
+.env
+.env.*             # e.g., .env.development, .env.local
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# macOS system files
+.DS_Store
+
+# IDE/editor-specific files
+.vscode/
+.idea/
+*.swp               # Vim swap files
+
+# Test coverage and reports
+coverage/
+*.lcov
+
+# Runtime/OS-specific
+*.pid
+*.seed
+*.pid.lock
+
+# Static export
+out/
+
+# Typescript
+*.tsbuildinfo
+
+# Server-specific
+server/public
+vite.config.ts.*
+*.tar.gz
+
+# Optional: Ignore large asset folders if not needed in repo
+public/uploads/
+public/images/
+assets/
+
+# Optional: Skip local dev data
+*.sqlite
+*.db

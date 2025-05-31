@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In to Aynstyn</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f9fafb;
+      color: #1f2937;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    
+    .logo {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 1rem;
+    }
+    
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    
+    p {
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+    
+    .login-option {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.75rem;
+      border-radius: 0.375rem;
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 150ms ease;
+      text-decoration: none;
+      color: #1f2937;
+    }
+    
+    .login-option:hover {
+      background-color: #f9fafb;
+    }
+    
+    .login-option img {
+      width: 20px;
+      height: 20px;
+      margin-right: 12px;
+    }
+    
+    .google {
+      color: #1f2937;
+    }
+    
+    .github {
+      color: #1f2937;
+    }
+    
+    .email {
+      background-color: #1f2937;
+      color: white;
+      border: none;
+    }
+    
+    .email:hover {
+      background-color: #111827;
+    }
+    
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 1.5rem 0;
+      color: #9ca3af;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background-color: #e5e7eb;
+    }
+    
+    .divider::before {
+      margin-right: 1rem;
+    }
+    
+    .divider::after {
+      margin-left: 1rem;
+    }
+    
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.75rem;
+      color: #6b7280;
+      text-align: center;
+    }
+    
+    .oauth-buttons {
+      margin-bottom: 1.5rem;
+    }
+    
+    form {
+      margin-top: 1.5rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    
+    input {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      color: #1f2937;
+    }
+    
+    input:focus {
+      outline: 2px solid #3b82f6;
+      border-color: #3b82f6;
+    }
+    
+    button {
+      width: 100%;
+      padding: 0.625rem 1rem;
+      background-color: #1f2937;
+      color: white;
+      border: none;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: background-color 150ms ease;
+    }
+    
+    button:hover {
+      background-color: #111827;
+    }
+    
+    .info {
+      margin-top: 0.5rem;
+      color: #6b7280;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="/logo.png" alt="Aynstyn Logo" class="logo">
+      <h1>Sign in to Aynstyn</h1>
+      <p>Continue to access unlimited assessments</p>
+    </div>
+    
+    <div class="login-options">
+      <a href="/api/auth/google" class="login-option google">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" width="20" height="20">
+        <span style="margin-left: 12px;">Continue with Google</span>
+      </a>
+      
+      <a href="/api/auth/github" class="login-option github">
+        <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub logo" width="20" height="20">
+        <span style="margin-left: 12px;">Continue with GitHub</span>
+      </a>
+      
+      <a href="/api/auth/twitter" class="login-option x">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="currentColor"/>
+        </svg>
+        <span style="margin-left: 12px;">Continue with X</span>
+      </a>
+      
+      <a href="/api/auth/apple" class="login-option apple">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path d="M16.5752 0C16.6231 0 16.6709 0 16.7188 0C16.7828 1.53135 16.1851 2.58111 15.5321 3.36416C14.883 4.15336 13.9889 4.83471 12.632 4.6923C12.5438 3.19491 13.1415 2.12939 13.7945 1.34029C14.3954 0.598916 15.526 0.0128324 16.5752 0Z" fill="currentColor"/>
+          <path d="M21.3223 17.7446C21.3223 17.7682 21.3223 17.7919 21.3223 17.8155C20.9986 18.9164 20.5703 19.9228 19.9979 20.9173C19.501 21.7774 18.9015 22.6731 17.9837 22.6731C17.1531 22.6731 16.6327 22.0825 15.7864 22.0684C14.8929 22.0542 14.4406 22.5851 13.6579 22.6873C13.5617 22.6986 13.4695 22.6986 13.3734 22.6873C12.5587 22.6143 11.9304 21.7064 11.4094 20.862C9.70506 18.0475 9.43173 13.8485 10.8808 11.7645C11.7272 10.5286 13.0762 9.82426 14.3353 9.82426C15.0517 9.82426 15.9062 10.093 16.5746 10.2816C17.0748 10.4234 17.6503 10.6378 18.0777 10.6331C18.3751 10.6307 18.6701 10.5801 18.9525 10.4831C19.9458 10.1609 20.9271 9.71892 21.7479 8.9618C21.872 9.07041 21.8241 9.56013 21.7958 9.74872C21.5987 10.8508 20.9031 11.858 20.0328 12.4404C19.8595 12.5552 19.68 12.6594 19.4946 12.753C19.1453 12.928 18.7635 13.0462 18.3751 13.1692C17.8991 13.3238 17.4151 13.4594 17.0838 13.8106C16.8682 14.0341 16.7486 14.3185 16.8107 14.6112C17.028 15.6968 18.1306 16.4857 19.1334 16.969C19.9242 17.3512 20.7566 17.5972 21.3223 17.7446Z" fill="currentColor"/>
+          <path d="M13.2571 9.82426C12.1185 9.82426 11.0519 8.76366 10.5358 7.40307C10.1562 6.38452 10.1083 5.30623 10.3692 4.24563C10.9191 4.29175 11.5089 4.5013 11.9941 4.77552C12.9233 5.30018 13.7759 6.16653 14.1156 7.52106C14.4713 8.92147 14.0759 9.82426 13.2571 9.82426Z" fill="currentColor"/>
+        </svg>
+        <span style="margin-left: 12px;">Continue with Apple</span>
+      </a>
+      
+      <a href="/api/auth/email" class="login-option email" style="display: flex; align-items: center; justify-content: center; background-color: #1f2937; color: white;">
+        <span>Continue with email</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 10px;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+      </a>
+    </div>
+      
+    <p class="info" style="text-align: center; margin-top: 16px;">
+      By creating an account, you'll get unlimited assessments and personalized learning recommendations.
+    </p>
+  </div>
+  
+  <div class="footer">
+    <p>© 2025 Aynstyn. All rights reserved.</p>
+  </div>
+</body>
+</html>
